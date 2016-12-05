@@ -1,0 +1,22 @@
+{
+  "name": "demo",
+  "version": "0.1.0",
+  "private": true,
+  "devDependencies": {
+    "react-scripts": "0.7.0"
+  },
+  "dependencies": {
+    "decorate-component-with-props": "^1.0.2",
+    "draft-js": "^0.9.1",
+    "draft-js-image-plugin": "^2.0.0-beta1",
+    "draft-js-plugins-editor": "^2.0.0-beta1",
+    "react": "^0.14.8",
+    "react-dom": "^0.14.8"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test --env=jsdom",
+    "eject": "react-scripts eject"
+  }
+}
