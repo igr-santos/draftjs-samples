@@ -60,15 +60,65 @@ class DraftEditor extends Component {
 
   insertImage() {
     const { editorState } = this.state;
-    const imageUrl = 'https://s1.vagalume.com/bananas-de-pijamas/images/profile-bigw314.jpg';
+    /*const imageUrl = 'https://s1.vagalume.com/bananas-de-pijamas/images/profile-bigw314.jpg';*/
+    const imageUrl = 'https://orig06.deviantart.net/7869/f/2009/131/9/e/zubat_icon_by_the_fry_bat.gif';
 
-    const entityKey = Entity.create('image', 'IMMUTABLE', { src: imageUrl });
+    // Check if insert image aside atomic block
+    const selection = editorState.getSelection();
+    const selectedBlock = editorState.getCurrentContent().getBlockForKey(selection.getStartKey());
+    if (selectedBlock.getType() === 'atomic') {
+      const blockKey = editorState.getCurrentContent().getKeyAfter(selectedBlock.getKey());
+      if (blockKey) {
+        const block = editorState.getCurrentContent().getBlockForKey(blockKey);
+        const newEditorState = EditorState.forceSelection(
+          editorState,
+          editorState.getSelection().merge({
+            anchorKey: block.getKey(),
+            focusKey: block.getKey(),
+            anchorOffset: 0,
+            focusOffset: 0
+          })
+        );
 
-    this.setEditorState(AtomicBlockUtils.insertAtomicBlock(
-      editorState,
-      entityKey,
-      ' '
-    ));
+        const entityKey = Entity.create('image', 'IMMUTABLE', { src: imageUrl });
+
+        this.setEditorState(AtomicBlockUtils.insertAtomicBlock(
+          newEditorState,
+          entityKey,
+          ' '
+        ));
+      } else {
+        debugger
+        const blockKey = genKey();
+        const contentBlockMap = new OrderedMap([
+          [blockKey, new ContentBlock({ key: blockKey, type: 'unstyled' })],
+        ]);
+        const currentBlockMap = editorState.getCurrentContent().getBlockMap();
+        // mount block map with new block to insert before
+        const blockMap = currentBlockMap.concat(
+          contentBlockMap.toSeq(),
+        ).toOrderedMap();
+
+        const content = editorState.getCurrentContent().merge({ blockMap });
+        const newEditorState = EditorState.push(editorState, content, 'split-block');
+
+        const entityKey = Entity.create('image', 'IMMUTABLE', { src: imageUrl });
+        this.setEditorState(AtomicBlockUtils.insertAtomicBlock(
+          newEditorState,
+          entityKey,
+          ' '
+        ));
+      }
+
+    } else {
+      const entityKey = Entity.create('image', 'IMMUTABLE', { src: imageUrl });
+
+      this.setEditorState(AtomicBlockUtils.insertAtomicBlock(
+        editorState,
+        entityKey,
+        ' '
+      ));
+    }
   }
 
   handleToggleLink(link) {
@@ -209,7 +259,6 @@ class DraftEditor extends Component {
     const block = editorState.getCurrentContent().getBlockForKey(selection.getStartKey())
     if (block.getType() === 'atomic') {
       this.handleKeyCommand('split-block', chars)
-
       return true
     }
     return false
