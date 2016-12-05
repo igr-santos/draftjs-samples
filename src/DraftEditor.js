@@ -131,7 +131,7 @@ class DraftEditor extends Component {
     this.setEditorState(editorStateWithLink);
   }
 
-  handleKeyCommand(command) {
+  handleKeyCommand(command, chars) {
     const { editorState } = this.state;
     const currentBlock = editorState
       .getCurrentContent()
@@ -176,16 +176,39 @@ class DraftEditor extends Component {
       }
 
       const content = currentContent.merge({ blockMap })
-      const editorStateWithLineBreak = EditorState.push(editorState, content, 'insert-new-line')
+      const insertEditorState = EditorState.push(editorState, content, 'insert-new-line')
+      let targetSelection = insertEditorState.getSelection().merge({
+        anchorKey: contentBlock.getKey(),
+        focusKey: contentBlock.getKey(),
+        anchorOffset: 0,
+        focusOffset: 0,
+        isBackward: false
+      })
 
-      this.setEditorState(EditorState.forceSelection(
-        editorStateWithLineBreak,
-        editorStateWithLineBreak.getSelection().merge({
-          anchorKey: contentBlock.getKey(),
-          anchorOffset: 0,
-          isBackward: false
-        })
-      ))
+      if (chars) {
+        // insert chars input in new block
+        const contentState = Modifier.insertText(insertEditorState.getCurrentContent(), targetSelection, chars)
+        const newEditorState = EditorState.push(insertEditorState, contentState, 'insert-characteres')
+
+        this.setEditorState(EditorState.forceSelection(newEditorState, targetSelection.merge({
+          anchorOffset: chars.length,
+          focusOffset: chars.length
+        })))
+      } else {
+        this.setEditorState(EditorState.forceSelection(insertEditorState, targetSelection))
+      }
+
+      return true
+    }
+    return false
+  }
+
+  handleBeforeInput(chars) {
+    const { editorState } = this.state
+    const selection = editorState.getSelection()
+    const block = editorState.getCurrentContent().getBlockForKey(selection.getStartKey())
+    if (block.getType() === 'atomic') {
+      this.handleKeyCommand('split-block', chars)
 
       return true
     }
@@ -205,6 +228,7 @@ class DraftEditor extends Component {
             editorState={this.state.editorState}
             onChange={this.setEditorState.bind(this)}
             readOnly={this.state.readOnly}
+            handleBeforeInput={this.handleBeforeInput.bind(this)}
             blockRendererFn={(block) => {
               if (block.getType() === 'atomic') {
                 const entityKey = block.getEntityAt(0);
