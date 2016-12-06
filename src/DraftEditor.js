@@ -22,6 +22,8 @@ import Link, { findLinkEntities } from './Link';
 
 import Utils, { getSelectedBlocks } from './Utils';
 
+import './DraftEditor.css';
+
 
 const decorators = new CompositeDecorator([
   {
@@ -29,6 +31,15 @@ const decorators = new CompositeDecorator([
     component: Link,
   },
 ]);
+
+const getBlockAlignment = (block) => {
+  let style = 'left'
+  block.findStyleRanges(e => {
+    if (e.hasStyle('center')) style = 'center'
+    if (e.hasStyle('right')) style = 'right'
+  })
+  return style
+}
 
 
 class DraftEditor extends Component {
@@ -88,7 +99,6 @@ class DraftEditor extends Component {
           ' '
         ));
       } else {
-        debugger
         const blockKey = genKey();
         const contentBlockMap = new OrderedMap([
           [blockKey, new ContentBlock({ key: blockKey, type: 'unstyled' })],
@@ -121,65 +131,18 @@ class DraftEditor extends Component {
     }
   }
 
-  handleToggleLink(link) {
-    const { editorState } = this.state;
-    let editorStateWithLink = editorState;
-
-    const selection = editorState.getSelection();
-    const contentState = editorState.getCurrentContent();
-
-    const anchorKey = selection.getStartKey();
-    const focusKey = selection.getEndKey();
-
-    // Get blocks selected to apply entity by block
-    const arrayBlocks = getSelectedBlocks(contentState, anchorKey, focusKey);
-
-    let newEntityKey;
-    arrayBlocks.map(contentBlock => {
-      const entityKey = contentBlock.getEntityAt(0);
-      if (entityKey) {
-        Entity.mergeData(entityKey, { link });
-      } else {
-        if (newEntityKey === undefined) {
-          newEntityKey = Entity.create('link', 'MUTABLE', { href: link });
-        }
-        const blockKey = contentBlock.getKey();
-        const startOffset = blockKey === anchorKey ? selection.getStartOffset() : 0;
-        const endOffset = blockKey === focusKey ? selection.getEndOffset() : contentBlock.getText().length;
-
-        // Select only block
-        const targetSelection = SelectionState
-          .createEmpty(blockKey)
-          .merge({
-            anchorOffset: startOffset,
-            focusOffset: endOffset
-          });
-
-        // Toggle link
-        const contentStateWithLink = Modifier.applyEntity(
-          editorStateWithLink.getCurrentContent(),
-          targetSelection,
-          newEntityKey
-        )
-        editorStateWithLink = EditorState.push(
-          editorStateWithLink,
-          contentStateWithLink,
-          'apply-entity'
-        )
-      }
-    });
-
-    this.setEditorState(editorStateWithLink);
-  }
-
   toggleLink() {
     const { editorState } = this.state;
     const linkUrl = 'http://ourcities.org';
 
-    /*this.handleToggleLink(linkUrl);*/
     const editorStateWithLink = Utils.toggleLink(editorState, { href: linkUrl });
     this.setEditorState(editorStateWithLink);
   }
+
+  toggleAlignment(alignment) {
+    this.setEditorState(Utils.toggleAlignment(this.state.editorState, alignment))
+  }
+
 
   handleKeyCommand(command, chars) {
     const { editorState } = this.state;
@@ -264,12 +227,43 @@ class DraftEditor extends Component {
     return false
   }
 
+  blockStyleFn(block) {
+    // TODO: Move to control and receive like plugin
+    const { editorState } = this.state
+
+    let alignment = getBlockAlignment(block)
+    /*if (!block.getText()) {
+      let previousBlock = editorState.getCurrentContent().getBlockBefore(block.getKey())
+      if (previousBlock) {
+        alignment = getBlockAlignment(previousBlock)
+      }
+    }*/
+    return `alignment--${alignment}`
+  }
+
+  blockRendererFn(block) {
+    if (block.getType() === 'atomic') {
+      const entityKey = block.getEntityAt(0);
+      const entity = entityKey ? Entity.get(entityKey) : undefined;
+
+      if (entity && entity.getType() === 'image') {
+        return {
+          component: Image,
+        };
+      }
+    }
+  }
+
+
   render() {
     return (
       <div>
         <div>
           <button onClick={this.insertImage.bind(this)}>Insert Image</button>
           <button onClick={this.toggleLink.bind(this)}>Insert Link</button>
+          <button onClick={() => this.toggleAlignment('left')}>Left</button>
+          <button onClick={() => this.toggleAlignment('center')}>Center</button>
+          <button onClick={() => this.toggleAlignment('right')}>Right</button>
         </div>
         <div style={{ height: 'auto', minHeight: '100px' }} onClick={() => this.refs.editor.focus()}>
           <Editor
@@ -278,18 +272,8 @@ class DraftEditor extends Component {
             onChange={this.setEditorState.bind(this)}
             readOnly={this.state.readOnly}
             handleBeforeInput={this.handleBeforeInput.bind(this)}
-            blockRendererFn={(block) => {
-              if (block.getType() === 'atomic') {
-                const entityKey = block.getEntityAt(0);
-                const entity = entityKey ? Entity.get(entityKey) : undefined;
-
-                if (entity && entity.getType() === 'image') {
-                  return {
-                    component: Image,
-                  };
-                }
-              }
-            }}
+            blockStyleFn={this.blockStyleFn.bind(this)}
+            blockRendererFn={this.blockRendererFn.bind(this)}
             handleKeyCommand={this.handleKeyCommand.bind(this)}
           />
         </div>

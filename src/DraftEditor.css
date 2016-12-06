@@ -1,0 +1,14 @@
+.public-DraftEditor-content figure {
+  display: inline-block;
+  margin: .2rem;
+}
+
+.public-DraftEditor-content .alignment--left {
+  text-align: left;
+}
+.public-DraftEditor-content .alignment--center {
+  text-align: center;
+}
+.public-DraftEditor-content .alignment--right {
+  text-align: right;
+}

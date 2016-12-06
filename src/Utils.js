@@ -97,4 +97,32 @@ export default {
     return editorStateMutable;
   },
 
+  toggleAlignment: (editorState, alignment) => {
+    const removeAlignments = ['left', 'center', 'right'].filter(align => alignment !== align);
+
+    let currentContent = editorState.getCurrentContent();
+    let selection = editorState.getSelection();
+    let focusBlock = currentContent.getBlockForKey(selection.getFocusKey());
+    let anchorBlock = currentContent.getBlockForKey(selection.getAnchorKey());
+    let selectionIsBackward = selection.getIsBackward();
+
+    let changes = {
+      anchorOffset: 0,
+      focusOffset: focusBlock.getLength()
+    }
+
+    if (selectionIsBackward) {
+      changes = {
+        focusOffset: 0,
+        anchorOffset: anchorBlock.getLength()
+      }
+    }
+     let selectWholeBlocks = selection.merge(changes)
+     let modifiedContent = Modifier.applyInlineStyle(currentContent, selectWholeBlocks, alignment);
+     let finalContent = removeAlignments.reduce(function(content, alignment) {
+        return Modifier.removeInlineStyle(content, selectWholeBlocks, alignment);
+     }, modifiedContent);
+     return EditorState.push(editorState, finalContent, 'change-alingment-block');
+  },
+
 };
